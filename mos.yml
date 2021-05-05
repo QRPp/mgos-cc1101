@@ -1,0 +1,28 @@
+author: QRPp <awesome.walrus+github@gmail.com>
+description: Mongoose OS CC1101 RF module support
+name: cc1101
+type: lib
+version: 1.0
+manifest_version: 2020-08-02
+
+includes: [include]
+sources: [src]
+
+libs:
+  - origin: https://github.com/mongoose-os-libs/pq
+  - origin: https://github.com/mongoose-os-libs/spi
+  - origin: https://github.com/QRPp/mgos-helpers
+
+config_schema:
+  - ["cc1101", "o", {"title":"CC1101 Tx RF module: singleton settings"}]
+  - ["cc1101.cs", "i", -1, {"title": "Use SPI CS 0/1/2; -1: no singleton"}]
+  - ["cc1101.fifo_thr", "i", -1, {"title": "Forced FIFOTHR.FIFO_THR, used w/ GDOx"}]
+  - ["cc1101.gpio", "o",{"title": "GDOx-connected GPIO pins"}]
+  - ["cc1101.gpio.gdo0", "i", -1, {"title": "GDO0; -1: none"}]
+  - ["cc1101.gpio.gdo2", "i", -1, {"title": "GDO2; -1: none"}]
+  - ["cc1101.osc_khz", "i", 26000, {"title": "Oscillator clock speed (kHz)"}]
+  - ["cc1101.spi_spd", "o", {"title": "SPI clock speeds"}]
+  - ["cc1101.spi_spd.one", "i", 10000000, {"title": "One-byte transfers"}]
+  - ["cc1101.spi_spd.two", "i", 9000000, {"title": "Two-byte transfers"}]
+  - ["cc1101.spi_spd.many", "i", 5000000, {"title": "Multi-byte transfers"}]
+  - ["cc1101.timer_us", "i", -1, {"title": "Forced FIFO poll period, used w/o GDOx"}]

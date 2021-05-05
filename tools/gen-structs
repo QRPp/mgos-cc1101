@@ -1,0 +1,375 @@
+#!/usr/bin/ruby
+all = {}
+
+File.open($0) { |f|
+  f.find { |l| l == "__END__\n" }
+  f.each("\n\n") { |p|
+    str, *fields = p.strip.split("\n")
+    str = str.split.reverse
+    str[1] = str[1].hex
+
+    s = <<~EOF
+      /* {{{2 #{str.first} */
+      struct CC1101_#{str.first} {
+        union {
+      EOF
+
+    if fields.size == 1
+      s << "    uint8_t #{fields.first.split.last};\n"
+    else
+      fields.map! { |s| "      uint8_t %s : %s;" % s.split.reverse }
+      s << <<~EOF
+            struct {
+        #if BYTE_ORDER == BIG_ENDIAN
+        #{fields.join "\n"}
+        #else
+        #{fields.reverse.join "\n"}
+        #endif
+            };
+        EOF
+    end
+
+    s << <<~'EOF'
+          uint8_t val;
+        };
+      };
+      EOF
+    all[str] = s
+  }
+}
+
+puts <<~'EOF'
+  #pragma once
+
+  #include <endian.h>
+  #include <stdint.h>
+
+  #if BYTE_ORDER != BIG_ENDIAN && BYTE_ORDER != LITTLE_ENDIAN
+  #error Only big and little endian architectures are supported.
+  #endif
+
+  /* {{{1 Registers. */
+  typedef enum cc1101_reg {
+  EOF
+
+all = all.sort_by { |k, v| k.last }
+all.inject(-100) { |prev, kv|
+  str, fields = kv
+  print "  CC1101_#{str.first}"
+  printf " = 0x%02x", str.last if str.last != prev.next
+  puts ','
+  str.last
+}
+puts <<~'EOF'
+  } cc1101_reg_t;
+
+  /* {{{1 Register structures. */
+  /* {{{2 CHIP_STATUS */
+  struct CC1101_CHIP_STATUS {
+    union {
+      struct {
+  #if BYTE_ORDER == BIG_ENDIAN
+        uint8_t CHIP_RDYn : 1;
+        uint8_t STATE : 3;
+        uint8_t FIFO_BYTES_AVAILABLE : 4;
+  #else
+        uint8_t FIFO_BYTES_AVAILABLE : 4;
+        uint8_t STATE : 3;
+        uint8_t CHIP_RDYn : 1;
+  #endif
+      };
+      uint8_t val;
+    };
+  };
+
+  EOF
+
+all.sort_by! { |k, v| k.first }
+all.each { |k, v| puts v, '' }
+puts <<~'EOF'
+  /* {{{2 ANY */
+  struct CC1101_ANY {
+    union {
+      struct CC1101_CHIP_STATUS CHIP_STATUS;
+  EOF
+all.each { |k, v| puts "    struct CC1101_#{k.first} #{k.first};" }
+puts <<~'EOF'
+      uint8_t reg, val;
+    };
+  };
+  /* }}}1 */
+  EOF
+
+__END__
+0x00 IOCFG2
+1 unused
+1 GDO2_INV
+6 GDO2_CFG
+
+0x01 IOCFG1
+1 GDO_DS
+1 GDO1_INV
+6 GDO1_CFG
+
+0x02 IOCFG0
+1 TEMP_SENSOR_ENABLE
+1 GDO0_INV
+6 GDO0_CFG
+
+0x03 FIFOTHR
+1 unused
+1 ADC_RETENTION
+2 CLOSE_IN_RX
+4 FIFO_THR
+
+0x04 SYNC1
+8 SYNC_p1
+
+0x05 SYNC0
+8 SYNC_p0
+
+0x06 PKTLEN
+8 PACKET_LENGTH
+
+0x07 PKTCTRL1
+3 PQT
+1 unused
+1 CRC_AUTOFLUSH
+1 APPEND_STATUS
+2 ADR_CHK
+
+0x08 PKTCTRL0
+1 unused1
+1 WHITE_DATA
+2 PKT_FORMAT
+1 unused2
+1 CRC_EN
+2 LENGTH_CONFIG
+
+0x09 ADDR
+8 DEVICE_ADDR
+
+0x0a CHANNR
+8 CHAN
+
+0x0b FSCTRL1
+2 unused
+1 reserved
+5 FREQ_IF
+
+0x0c FSCTRL0
+8 FREQOFF
+
+0x0d FREQ2
+8 FREQ_p2
+
+0x0e FREQ1
+8 FREQ_p1
+
+0x0f FREQ0
+8 FREQ_p0
+
+0x10 MDMCFG4
+2 CHANBW_E
+2 CHANBW_M
+4 DRATE_E
+
+0x11 MDMCFG3
+8 DRATE_M
+
+0x12 MDMCFG2
+1 DEM_DCFILT_OFF
+3 MOD_FORMAT
+1 MANCHESTER_EN
+3 SYNC_MODE
+
+0x13 MDMCFG1
+1 FEC_EN
+3 NUM_PREAMBLE
+2 unused
+2 CHANSPC_E
+
+0x14 MDMCFG0
+8 CHANSPC_M
+
+0x15 DEVIATN
+1 unused1
+3 DEVIATION_E
+1 unused2
+3 DEVIATION_M
+
+0x16 MCSM2
+3 unused
+1 RX_TIME_RSSI
+1 RX_TIME_QUAL
+3 RX_TIME
+
+0x17 MCSM1
+2 unused
+2 CCA_MODE
+2 RXOFF_MODE
+2 TXOFF_MODE
+
+0x18 MCSM0
+2 unused
+2 FS_AUTOCAL
+2 PO_TIMEOUT
+1 PIN_CTRL_EN
+1 XOSC_FORCE_ON
+
+0x19 FOCCFG
+2 unused
+1 FOC_BS_CS_GATE
+2 FOC_PRE_K
+1 FOC_POST_K
+2 FOC_LIMIT
+
+0x1a BSCFG
+2 BS_PRE_KI
+2 BS_PRE_KP
+1 BS_POST_KI
+1 BS_POST_KP
+2 BS_LIMIT
+
+0x1b AGCCTRL2
+2 MAX_DVGA_GAIN
+3 MAX_LNA_GAIN
+3 MAGN_TARGET
+
+0x1c AGCCTRL1
+1 unused
+1 AGC_LNA_PRIORITY
+2 CARRIER_SENSE_REL_THR
+4 CARRIER_SENSE_ABS_THR
+
+0x1d AGCCTRL0
+2 HYST_LEVEL
+2 WAIT_TIME
+2 AGC_FREEZE
+2 FILTER_LENGTH
+
+0x1e WOREVT1
+8 EVENT0_p1
+
+0x1f WOREVT0
+8 EVENT0_p0
+
+0x20 WORCTRL
+1 RC_PD
+3 EVENT1
+1 RC_CAL
+1 unused
+2 WOR_RES
+
+0x21 FREND1
+2 LNA_CURRENT
+2 LNA2MIX_CURRENT
+2 LODIV_BUF_CURRENT_RX
+2 MIX_CURRENT
+
+0x22 FREND0
+2 unused1
+2 LODIV_BUF_CURRENT_TX
+1 unused2
+3 PA_POWER
+
+0x23 FSCAL3
+2 FSCAL3_p2
+2 CHP_CURR_CAL_EN
+4 FSCAL3_p0
+
+0x24 FSCAL2
+2 unused
+1 VCO_CORE_H_EN
+5 FSCAL2
+
+0x25 FSCAL1
+2 unused
+6 FSCAL1
+
+0x26 FSCAL0
+1 unused
+7 FSCAL0
+
+0x27 RCCTRL1
+1 unused
+7 RCCTRL1
+
+0x28 RCCTRL0
+1 unused
+7 RCCTRL1
+
+0x29 FSTEST
+8 FSTEST
+
+0x2a PTEST
+8 PTEST
+
+0x2b AGCTEST
+8 AGCTEST
+
+0x2c TEST2
+8 TEST2
+
+0x2d TEST1
+8 TEST1
+
+0x2e TEST0
+6 TEST0_p2
+1 VCO_SEL_CAL_EN
+1 TEST0_p0
+
+0x30 PARTNUM
+8 PARTNUM
+
+0x31 VERSION
+8 VERSION
+
+0x32 FREQEST
+8 FREQOFF_EST
+
+0x33 LQI
+1 CRC_OK
+7 LQI_EST
+
+0x34 RSSI
+8 RSSI
+
+0x35 MARCSTATE
+3 unused
+5 MARC_STATE
+
+0x36 WORTIME1
+8 TIME_p1
+
+0x37 WORTIME0
+8 TIME_p0
+
+0x38 PKTSTATUS
+1 CRC_OK
+1 CS
+1 PQT_REACHED
+1 CCA
+1 SFD
+1 GDO2
+1 unused
+1 GDO0
+
+0x39 VCO_VC_DAC
+8 VCO_VC_DAC
+
+0x3a TXBYTES
+1 TXFIFO_UNDERFLOW
+7 NUM_TXBYTES
+
+0x3b RXBYTES
+1 RXFIFO_OVERFLOW
+7 NUM_RXBYTES
+
+0x3c RCCTRL1_STATUS
+1 unused
+7 RCCTRL1_STATUS
+
+0x3d RCCTRL0_STATUS
+1 unused
+7 RCCTRL0_STATUS

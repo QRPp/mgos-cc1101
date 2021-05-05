@@ -103,9 +103,6 @@ bool mgos_cc1101_reset(const struct mgos_cc1101 *cc1101) {
     cc1101_reg_t r;
     struct CC1101_ANY v;
   } cc1101_init_conf[] = {
-    RCFG(IOCFG2, GDO2_CFG : 46),  // GDO2_CFG : 41
-    RCFG(IOCFG0, GDO0_CFG : 46),  // GDO0_CFG : 63
-    RCFG(MDMCFG1, CHANSPC_E : 2),  // NUM_PREAMBLE : 2
     RCFG(MCSM0, FS_AUTOCAL : 1, PO_TIMEOUT : 2),  // FS_AUTOCAL : 0, PO_TIMEOUT : 1
     {r : UINT8_MAX}};
 #undef RCFG

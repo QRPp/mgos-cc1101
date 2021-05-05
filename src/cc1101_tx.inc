@@ -8,8 +8,6 @@
 
 #include <mgos-helpers/log.h>
 
-#include "cc1101.h"
-
 static void distrib_update(struct mgos_cc1101_distrib *d, uint32_t val) {
   d->tot += val;
   d->cnt++;

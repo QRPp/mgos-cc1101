@@ -125,7 +125,7 @@ static bool mgos_cc1101_tx_fifo_feed(struct mgos_cc1101 *cc1101, bool setup) {
   struct mgos_cc1101_tx *tx = &cc1101->tx;
   if (!setup) {
     distrib_update(&tx->st.delay_us, now - tx->st.last_fed);
-    cc1101_spi_start(cc1101);
+    spi_start(cc1101);
   }
   tx->st.last_fed = now;
 
@@ -142,33 +142,32 @@ static bool mgos_cc1101_tx_fifo_feed(struct mgos_cc1101 *cc1101, bool setup) {
     buf[0] = CC1101_FIFO;
     fill = (tx->end_len ? mgos_cc1101_tx_fifo_fill_bits
                         : mgos_cc1101_tx_fifo_fill_bytes)(tx, buf + 1, fill);
-    TRY_RETF(cc1101_spi_write_regs, cc1101, fill, buf);
+    TRY_RETF(spi_write_regs, cc1101, fill, buf);
 
     bool req_last_int = !tx->todo && cc1101->gpio.gdo >= 0,
          set_fix_len = tx->infinite && tx->todo < 256 - CC1101_FIFO_SIZE;
-    if ((req_last_int || set_fix_len || setup) && fill > 1)
-      cc1101_spi_restart(cc1101);
+    if ((req_last_int || set_fix_len || setup) && fill > 1) spi_restart(cc1101);
     if (req_last_int) {
       struct CC1101_ANY ic = {IOCFG0 : {GDO0_CFG : 6}};
-      TRY_GT(cc1101_spi_write_reg, cc1101, cc1101->gdo_reg, ic.val);
+      TRY_GT(spi_write_reg, cc1101, cc1101->gdo_reg, ic.val);
     }
     if (set_fix_len)
-      TRY_GT(cc1101_spi_mod_regs, cc1101, CC1101_PKTCTRL0, CC1101_PKTCTRL0,
+      TRY_GT(spi_mod_regs, cc1101, CC1101_PKTCTRL0, CC1101_PKTCTRL0,
              mgos_cc1101_tx_reg_tail, NULL);
   }
 
   if (!setup) {
-    cc1101_spi_stop(cc1101);
+    spi_stop(cc1101);
     distrib_update(&tx->st.feed_us, mgos_uptime_micros() - now);
   }
   return tx->todo + tb.NUM_TXBYTES > 0;
 
 err:
-  cc1101_spi_restart(cc1101);
-  cc1101_spi_write_cmd(cc1101, CC1101_SIDLE);
+  spi_restart(cc1101);
+  spi_write_cmd(cc1101, CC1101_SIDLE);
 flush:
-  cc1101_spi_write_cmd(cc1101, CC1101_SFTX);
-  if (!setup) cc1101_spi_stop(cc1101);
+  spi_write_cmd(cc1101, CC1101_SFTX);
+  if (!setup) spi_stop(cc1101);
   return false;
 }
 
@@ -215,15 +214,15 @@ static void mgos_cc1101_tx_setup(void *opaque) {
   struct mgos_cc1101_tx *tx = &cc1101->tx;
 
   bool ok = false;
-  cc1101_spi_start(cc1101);
+  spi_start(cc1101);
   TRY_GT(mgos_cc1101_tx_fifo_feed, cc1101, true);
-  TRY_GT(cc1101_spi_write_cmd, cc1101, CC1101_STX);
+  TRY_GT(spi_write_cmd, cc1101, CC1101_STX);
   if (cc1101->gpio.gdo < 0)
     tx->timer_id = TRY_GT(mgos_set_hw_timer, tx->timer_us, MGOS_TIMER_REPEAT,
                           mgos_cc1101_tx_timer, cc1101);
   ok = true;
 err:
-  cc1101_spi_stop(cc1101);
+  spi_stop(cc1101);
   if (!ok) mgos_cc1101_tx_end(cc1101, true);
 }
 
@@ -235,7 +234,7 @@ bool mgos_cc1101_tx(struct mgos_cc1101 *cc1101, size_t len, uint8_t *data,
   if (!tx->pq.task) TRY_RETF(pq_start, &tx->pq);
 
   bool ok = false;
-  cc1101_spi_start(cc1101);
+  spi_start(cc1101);
   struct CC1101_MARCSTATE ms = {val : spi_get_reg_gt(cc1101, CC1101_MARCSTATE)};
   if (ms.MARC_STATE != CC1101_MARC_STATE_IDLE)
     FNERR_GT("MARC_STATE %u, not IDLE (%u)", ms.MARC_STATE,
@@ -249,9 +248,9 @@ bool mgos_cc1101_tx(struct mgos_cc1101 *cc1101, size_t len, uint8_t *data,
   mgos_cc1101_tx_st_reset(&tx->st);
 
   FNLOG(LL_INFO, "TX start (%u*%u b → %u B)", copies + 1, len, tx->todo);
-  TRY_GT(cc1101_spi_mod_regs, cc1101, CC1101_IOCFG2, CC1101_MDMCFG2,
+  TRY_GT(spi_mod_regs, cc1101, CC1101_IOCFG2, CC1101_MDMCFG2,
          mgos_cc1101_tx_reg_setup, NULL);
-  cc1101_spi_restart(cc1101);
+  spi_restart(cc1101);
 
   if (cc1101->gpio.gdo >= 0) {
     TRY_GT(mgos_gpio_set_int_handler_isr, cc1101->gpio.gdo,
@@ -265,7 +264,7 @@ bool mgos_cc1101_tx(struct mgos_cc1101 *cc1101, size_t len, uint8_t *data,
               cc1101);
 
 err:
-  cc1101_spi_stop(cc1101);
+  spi_stop(cc1101);
   if (!ok) mgos_cc1101_tx_end(cc1101, false);
   return ok;
 }

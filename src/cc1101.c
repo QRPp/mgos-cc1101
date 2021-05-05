@@ -33,9 +33,9 @@ struct mgos_cc1101 {
   } tx;
 };
 
-#include "cc1101_spi.h"
 #include "cc1101_regs.h"
 #include "cc1101_singleton.h"
+#include "cc1101_spi.h"
 #include "cc1101_tx.h"
 
 struct mgos_cc1101 *mgos_cc1101_create(int cs, int gdo0_gpio, int gdo2_gpio) {
@@ -74,25 +74,25 @@ struct mgos_cc1101 *mgos_cc1101_create(int cs, int gdo0_gpio, int gdo2_gpio) {
 bool mgos_cc1101_mod_regs(struct mgos_cc1101 *cc1101, cc1101_reg_t from,
                           cc1101_reg_t to, mgos_cc1101_mod_regs_cb cb,
                           void *opaque) {
-  cc1101_spi_start(cc1101);
-  bool ok = cc1101_spi_mod_regs(cc1101, from, to, cb, opaque);
-  cc1101_spi_stop(cc1101);
+  spi_start(cc1101);
+  bool ok = spi_mod_regs(cc1101, from, to, cb, opaque);
+  spi_stop(cc1101);
   return ok;
 }
 
 bool mgos_cc1101_read_reg(const struct mgos_cc1101 *cc1101, cc1101_reg_t reg,
                           uint8_t *val) {
-  cc1101_spi_start(cc1101);
-  bool ok = cc1101_spi_read_reg(cc1101, reg, val);
-  cc1101_spi_stop(cc1101);
+  spi_start(cc1101);
+  bool ok = spi_read_reg(cc1101, reg, val);
+  spi_stop(cc1101);
   return ok;
 }
 
 bool mgos_cc1101_read_regs(const struct mgos_cc1101 *cc1101, uint8_t cnt,
                            uint8_t *vals) {
-  cc1101_spi_start(cc1101);
-  bool ok = cc1101_spi_read_regs(cc1101, cnt, vals);
-  cc1101_spi_stop(cc1101);
+  spi_start(cc1101);
+  bool ok = spi_read_regs(cc1101, cnt, vals);
+  spi_stop(cc1101);
   return ok;
 }
 
@@ -115,17 +115,17 @@ bool mgos_cc1101_reset(const struct mgos_cc1101 *cc1101) {
   bool ok = false;
   TRY_RET(ok, mgos_gpio_setup_output, cc1101->gpio.cs, false);
   int64_t enough = mgos_uptime_micros() + 40;
-  cc1101_spi_stop(cc1101);
+  spi_stop(cc1101);
   while (mgos_uptime_micros() < enough) (void) 0;
-  cc1101_spi_start(cc1101);
-  TRY_GT(cc1101_spi_write_cmd, cc1101, CC1101_SRES);
+  spi_start(cc1101);
+  TRY_GT(spi_write_cmd, cc1101, CC1101_SRES);
   while (mgos_gpio_read(cc1101->gpio.so)) (void) 0;
-  cc1101_spi_restart(cc1101);
+  spi_restart(cc1101);
 
   /* Sane configuration. */
   const struct cc1101_reg_val *rv = cc1101_init_conf;
   for (; rv->r != UINT8_MAX; rv++) {
-    TRY_GT(cc1101_spi_write_reg, cc1101, rv->r, rv->v.val);
+    TRY_GT(spi_write_reg, cc1101, rv->r, rv->v.val);
     uint8_t val = spi_get_reg_gt(cc1101, rv->r);
     if (val != rv->v.val)
       FNERR_GT("reg %02x: wrote %02x, read %02x", rv->r, rv->v.val, val);
@@ -135,20 +135,20 @@ bool mgos_cc1101_reset(const struct mgos_cc1101 *cc1101) {
   if (cc1101->gpio.gdo >= 0) {
     TRY_GT(mgos_gpio_setup_input, cc1101->gpio.gdo, MGOS_GPIO_PULL_NONE);
     struct CC1101_IOCFG0 r = {GDO0_CFG : 46};
-    TRY_GT(cc1101_spi_write_reg, cc1101, cc1101->gdo_reg, r.val);
+    TRY_GT(spi_write_reg, cc1101, cc1101->gdo_reg, r.val);
   }
   ok = true;
 
 err:
-  cc1101_spi_stop(cc1101);
+  spi_stop(cc1101);
   return ok;
 }
 
 bool mgos_cc1101_write_reg(const struct mgos_cc1101 *cc1101, cc1101_reg_t reg,
                            uint8_t val) {
-  cc1101_spi_start(cc1101);
-  bool ok = cc1101_spi_write_reg(cc1101, reg, val);
-  cc1101_spi_stop(cc1101);
+  spi_start(cc1101);
+  bool ok = spi_write_reg(cc1101, reg, val);
+  spi_stop(cc1101);
   return ok;
 }
 

@@ -1,3 +1,4 @@
+/* vim: set filetype=c: */
 #include <stdlib.h>
 
 #include <mgos_config.h>

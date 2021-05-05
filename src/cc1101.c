@@ -10,6 +10,8 @@
 
 #include "cc1101.h"
 
+#include "inc/cc1101_tx.inc"
+
 static bool cc1101_spi_read_regs(const struct mgos_cc1101 *cc1101, uint8_t cnt,
                                  uint8_t *trx);
 

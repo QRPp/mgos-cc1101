@@ -1,12 +1,4 @@
 /* vim: set filetype=c: */
-#include <stdlib.h>
-
-#include <mgos_config.h>
-#include <mgos_gpio.h>
-#include <mgos_time.h>
-#include <mgos_timers.h>
-
-#include <mgos-helpers/log.h>
 
 static void distrib_update(struct mgos_cc1101_distrib *d, uint32_t val) {
   d->tot += val;

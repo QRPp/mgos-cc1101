@@ -1,10 +1,12 @@
 #include <math.h>
+#include <stdlib.h>
 
 #include <mgos_config.h>
 #include <mgos_gpio.h>
 #include <mgos_spi.h>
 #include <mgos_system.h>
 #include <mgos_time.h>
+#include <mgos_timers.h>
 #include <pq.h>
 
 #include <mgos-helpers/log.h>

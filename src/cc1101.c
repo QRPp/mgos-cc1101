@@ -33,10 +33,10 @@ struct mgos_cc1101 {
   } tx;
 };
 
-#include "cc1101_spi.inc"
-#include "cc1101_regs.inc"
-#include "cc1101_singleton.inc"
-#include "cc1101_tx.inc"
+#include "cc1101_spi.h"
+#include "cc1101_regs.h"
+#include "cc1101_singleton.h"
+#include "cc1101_tx.h"
 
 struct mgos_cc1101 *mgos_cc1101_create(int cs, int gdo0_gpio, int gdo2_gpio) {
   struct mgos_spi *spi = mgos_spi_get_global();

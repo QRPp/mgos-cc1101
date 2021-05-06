@@ -53,6 +53,7 @@ static bool mgos_cc1101_tx_reg_setup(struct mgos_cc1101 *cc1101,
           len_cfg = tx->infinite ? CC1101_LENGTH_CONFIG_INFINITE
                                  : CC1101_LENGTH_CONFIG_FIXED;
   CC1101_REGS_REG(regs, PKTLEN).PACKET_LENGTH = pkt_len;
+  CC1101_REGS_REG(regs, PKTCTRL0).PKT_FORMAT = CC1101_PKT_FORMAT_FIFO;
   CC1101_REGS_REG(regs, PKTCTRL0).LENGTH_CONFIG = len_cfg;
   FNLOG(LL_DEBUG, "LENGTH_CONFIG %u, PACKET_LENGTH %u", len_cfg, pkt_len);
   return true;

@@ -3,6 +3,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include <mgos_system.h>
+
 #include <mgos-cc1101-gen-structs.h>
 
 /* {{{1 Sundry. */
@@ -109,10 +111,34 @@ struct mgos_cc1101_regs {
   })
 #define CC1101_REGS_REG(regs, reg) CC1101_REGS_ANY(regs, CC1101_##reg)->reg
 
+struct mgos_cc1101_tx_req {
+  uint8_t *data;
+  size_t len, copies;
+  bool free_data;
+  mgos_cb_t cb;
+  void *opaque;
+};
+
+enum mgos_cc1101_tx_err {
+  CC1101_TX_OK = 0,
+  CC1101_TX_FIFO_UNDERFLOW,
+  CC1101_TX_HW_NOT_READY,
+  CC1101_TX_INCOMPLETE,
+  CC1101_TX_QUEUE_FULL,
+  CC1101_TX_RT_BUSY,
+  CC1101_TX_SYS_ERR,
+  CC1101_TX_UNHANDLED
+};
+
 struct mgos_cc1101_tx_stats {
-  bool busy, ok, underflow;
-  int64_t last_fed;
   struct mgos_cc1101_distrib delay_us, feed_us, fifo_byt;
+};
+
+struct mgos_cc1101_tx_op {
+  struct mgos_cc1101 *cc1101;
+  enum mgos_cc1101_tx_err err;
+  struct mgos_cc1101_tx_req req;
+  struct mgos_cc1101_tx_stats st;
 };
 
 #ifdef __cplusplus
@@ -148,10 +174,7 @@ bool mgos_cc1101_set_modulation(const struct mgos_cc1101 *cc1101,
                                 uint8_t sync_mode, bool manchester, bool fec);
 bool mgos_cc1101_write_reg(const struct mgos_cc1101 *cc1101, cc1101_reg_t reg,
                            uint8_t val);
-bool mgos_cc1101_tx(struct mgos_cc1101 *cc1101, size_t len, uint8_t *data,
-                    size_t copies);
-const struct mgos_cc1101_tx_stats *mgos_cc1101_tx_stats(
-    const struct mgos_cc1101 *cc1101);
+bool mgos_cc1101_tx(struct mgos_cc1101 *cc1101, struct mgos_cc1101_tx_req *req);
 
 #ifdef __cplusplus
 }

@@ -10,6 +10,7 @@
 #include <pq.h>
 
 #include <mgos-helpers/log.h>
+#include <mgos-helpers/mem.h>
 
 #include <mgos-cc1101.h>
 
@@ -21,15 +22,28 @@ struct mgos_cc1101 {
   uint32_t osc_khz;
   struct mgos_spi *spi;
   const struct mgos_config_cc1101_spi_spd *spd;
-  struct mgos_cc1101_tx {
-    pq_handle pq;
-    size_t todo;
-    uint8_t *data, *end, *pos;
-    uint8_t end_len, pos_done;
-    bool infinite;
-    mgos_timer_id timer_id;
-    int timer_us;
-    struct mgos_cc1101_tx_stats st;
+
+  struct cc_tx {
+    struct cc_tx_q {     // TX request queue
+      pq_handle pq;      // PQ task+cb queue
+      QueueHandle_t bl;  // TX request backlog
+    } q;
+
+    struct cc_tx_rt {                // Realtime TX handling
+      pq_handle pq;                  // PQ task+cb queue
+      struct mgos_cc1101_tx_op *op;  // Current TX operation
+
+      mgos_timer_id timer_id;  // Polling: RT timer; GDO ints: sanity poll timer
+      int timer_us;            // Delay for the above
+
+      uint8_t *data, *end, *pos;  // Start, end, current position in TX data
+      uint8_t end_len, pos_done;  // Bit lengths at *end and *pos
+      bool infinite;   // LENGTH_CONFIG == CC1101_LENGTH_CONFIG_INFINITE
+      size_t todo;     // Bytes to still feed to TX FIFO
+      int64_t fed_at;  // mgos_uptime_micros() when looked at TX FIFO
+
+      struct mgos_cc1101_tx_stats st;  // TX statistics
+    } rt;
   } tx;
 };
 
@@ -64,11 +78,10 @@ struct mgos_cc1101 *mgos_cc1101_create(int cs, int gdo0_gpio, int gdo2_gpio) {
   cc1101->osc_khz = mgos_sys_config_get_cc1101_osc_khz();
   cc1101->spi = spi;
   cc1101->spd = mgos_sys_config_get_cc1101_spi_spd();
-  cc1101->tx.data = NULL;
-  pq_set_defaults(&cc1101->tx.pq);
-  cc1101->tx.pq.name = "CC1101 PQ";
-  cc1101->tx.pq.prio = 24;
-  return cc1101;
+  if (tx_sys_init(&cc1101->tx)) return cc1101;
+
+  free(cc1101);
+  return NULL;
 }
 
 bool mgos_cc1101_mod_regs(struct mgos_cc1101 *cc1101, cc1101_reg_t from,

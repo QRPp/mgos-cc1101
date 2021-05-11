@@ -13,12 +13,14 @@ static void tx_q_done(struct mgos_cc1101_tx_op *op) {
 static void tx_q_new(void *opaque) {
   struct mgos_cc1101_tx_op *op = opaque;
   struct cc_tx *tx = &op->cc1101->tx;
-  if (tx->rt.op) {  // TX op in progress?
+  if (tx->q.op) {  // TX op in progress?
     if (xQueueSendToBack(tx->q.bl, &opaque, 0)) return;
     FNERR("TX queue full");
     op->err = CC1101_TX_QUEUE_FULL;
   } else {
+    tx->q.op = op;
     if (pq_invoke_cb(&tx->rt.pq, NULL, tx_rt_start, op, false, false)) return;
+    tx->q.op = NULL;
     FNERR("error scheduling %s", "TX op RT start");
     op->err = CC1101_TX_RT_BUSY;
   }
@@ -27,9 +29,9 @@ static void tx_q_new(void *opaque) {
 
 static void tx_q_rt_end(void *opaque) {
   struct mgos_cc1101_tx_op *op = opaque;
-  struct mgos_cc1101 *cc1101 = op->cc1101;
+  op->cc1101->tx.q.op = NULL;
   tx_q_done(op);
-  if (xQueueReceive(cc1101->tx.q.bl, &op, 0)) tx_q_new(op);
+  if (xQueueReceive(op->cc1101->tx.q.bl, &op, 0)) tx_q_new(op);
 }
 
 /* {{{1 TX RT */
@@ -169,7 +171,7 @@ static bool tx_fifo_feed(struct mgos_cc1101 *cc1101, bool setup) {
   struct CC1101_TXBYTES tb = {val : spi_get_reg_gt(cc1101, CC1101_TXBYTES)};
   if (!setup && rt->todo) tx_st_update(&rt->st.fifo_byt, tb.NUM_TXBYTES);
   if (tb.TXFIFO_UNDERFLOW) {
-    rt->op->err = CC1101_TX_FIFO_UNDERFLOW;
+    cc1101->tx.q.op->err = CC1101_TX_FIFO_UNDERFLOW;
     FNERR_GTL(flush, "FIFO underflow");
   }
 
@@ -197,7 +199,7 @@ static bool tx_fifo_feed(struct mgos_cc1101 *cc1101, bool setup) {
     tx_st_update(&rt->st.feed_us, mgos_uptime_micros() - now);
   }
   if (rt->todo + tb.NUM_TXBYTES > 0) return true;
-  return (rt->op->err = CC1101_TX_OK);
+  return (cc1101->tx.q.op->err = CC1101_TX_OK);
 
 err:
   spi_restart(cc1101);
@@ -211,9 +213,8 @@ flush:
 
 static void tx_rt_end(struct mgos_cc1101 *cc1101) {
   struct cc_tx_rt *rt = &cc1101->tx.rt;
-  struct mgos_cc1101_tx_op *op = rt->op;
+  struct mgos_cc1101_tx_op *op = cc1101->tx.q.op;
   rt->data = NULL;
-  rt->op = NULL;
   if (rt->timer_id) mgos_clear_timer(rt->timer_id);
   if (cc1101->gpio.gdo >= 0)
     mgos_gpio_remove_int_handler(cc1101->gpio.gdo, NULL, NULL);
@@ -221,12 +222,12 @@ static void tx_rt_end(struct mgos_cc1101 *cc1101) {
   FNLOG(LL_INFO, "TX end (%u B unsent, FIFO min %u B)", rt->todo,
         rt->st.fifo_byt.min);
   if (!pq_invoke_cb(&cc1101->tx.q.pq, NULL, tx_q_rt_end, op, false, true))
-    FNERR("error scheduling %s", "TX op RT end; op stuck/mem leaked");
+    FNERR("error scheduling %s", "TX op RT end; TX stuck/op mem leaked");
 }
 
 static void tx_rt_poll(void *opaque) {
   struct mgos_cc1101 *cc1101 = opaque;
-  if (cc1101->tx.rt.op && !tx_fifo_feed(cc1101, false)) tx_rt_end(cc1101);
+  if (cc1101->tx.rt.data && !tx_fifo_feed(cc1101, false)) tx_rt_end(cc1101);
 }
 
 static IRAM void tx_rt_tmr(void *opaque) {
@@ -254,7 +255,6 @@ static void tx_rt_start(void *opaque) {
   }
   TRY_GT(spi_write_cmd, cc1101, CC1101_SFTX);
 
-  rt->op = op;
   rt->data = rt->pos = op->req.data;
   rt->pos_done = 0;
   rt->end = rt->data + op->req.len / 8;
@@ -292,8 +292,8 @@ err:
 
 /* {{{1 TX tasks/queue setup */
 static bool tx_sys_init(struct cc_tx *tx) {
+  tx->q.op = NULL;
   tx->rt.data = NULL;
-  tx->rt.op = NULL;
 
   tx->q.bl = xQueueCreate(32, sizeof(struct mgos_cc1101_tx_op *));
   if (!tx->q.bl) FNERR_RETF(CALL_FAILED(xQueueCreate));
@@ -325,6 +325,8 @@ err:
  *                    ↓ tx_q_rt_end() ←'
  *                    ↓ ↓
  *        req->cb() ← tx_q_done()
+ *
+ *        	      sync: tx.q.op    sync: tx.rt.data
  */
 bool mgos_cc1101_tx(struct mgos_cc1101 *cc1101,
                     struct mgos_cc1101_tx_req *req) {

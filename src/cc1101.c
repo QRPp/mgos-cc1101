@@ -24,14 +24,14 @@ struct mgos_cc1101 {
   const struct mgos_config_cc1101_spi_spd *spd;
 
   struct cc_tx {
-    struct cc_tx_q {     // TX request queue
-      pq_handle pq;      // PQ task+cb queue
-      QueueHandle_t bl;  // TX request backlog
+    struct cc_tx_q {                 // TX request queue
+      QueueHandle_t bl;              // TX request backlog
+      struct mgos_cc1101_tx_op *op;  // Current TX request
+      pq_handle pq;                  // PQ task+cb queue
     } q;
 
-    struct cc_tx_rt {                // Realtime TX handling
-      pq_handle pq;                  // PQ task+cb queue
-      struct mgos_cc1101_tx_op *op;  // Current TX operation
+    struct cc_tx_rt {  // Realtime TX handling
+      pq_handle pq;    // PQ task+cb queue
 
       mgos_timer_id timer_id;  // Polling: RT timer; GDO ints: sanity poll timer
       int timer_us;            // Delay for the above

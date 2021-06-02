@@ -29,9 +29,10 @@ static void tx_q_new(void *opaque) {
 
 static void tx_q_rt_end(void *opaque) {
   struct mgos_cc1101_tx_op *op = opaque;
-  op->cc1101->tx.q.op = NULL;
+  struct cc_tx_q *q = &op->cc1101->tx.q;
+  q->op = NULL;
   tx_q_done(op);
-  if (xQueueReceive(op->cc1101->tx.q.bl, &op, 0)) tx_q_new(op);
+  if (xQueueReceive(q->bl, &op, 0)) tx_q_new(op);
 }
 
 /* {{{1 TX RT */

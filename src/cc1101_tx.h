@@ -70,7 +70,7 @@ static bool tx_reg_setup(struct mgos_cc1101 *cc1101,
       TRY_RETF(tx_reg_setup_drate, cc1101, regs, &kbps);
       rt->timer_us =
           CC1101_FIFO_SIZE * 8 / 3 * 1000 / kbps;  // ~1/3 FIFO at DRATE.
-      FNLOG(LL_INFO, "%f kbps → %d us polling", kbps, rt->timer_us);
+      FNLOG(LL_DEBUG, "%f kbps → %d us polling", kbps, rt->timer_us);
     }
   } else {
     TRY_RETF(tx_reg_setup_drate, cc1101, regs, &kbps);
@@ -220,8 +220,8 @@ static void tx_rt_end(struct mgos_cc1101 *cc1101) {
   if (cc1101->gpio.gdo >= 0)
     mgos_gpio_remove_int_handler(cc1101->gpio.gdo, NULL, NULL);
   op->st = rt->st;
-  FNLOG(LL_INFO, "TX end (%u B unsent, FIFO min %u B)", rt->todo,
-        rt->st.fifo_byt.min);
+  FNLOG(rt->todo ? LL_ERROR : LL_DEBUG, "TX end (%u B unsent, FIFO min %u B)",
+        rt->todo, rt->st.fifo_byt.min);
   if (!pq_invoke_cb(&cc1101->tx.q.pq, NULL, tx_q_rt_end, op, false, true))
     FNERR("error scheduling %s", "TX op RT end; TX stuck/op mem leaked");
 }
@@ -263,7 +263,7 @@ static void tx_rt_start(void *opaque) {
   rt->todo = ((op->req.copies + 1) * op->req.len + 7) / 8;
   tx_st_reset(&rt->st);
 
-  FNLOG(LL_INFO, "TX start (%u*%u b → %u B)", op->req.copies + 1, op->req.len,
+  FNLOG(LL_DEBUG, "TX start (%u*%u b → %u B)", op->req.copies + 1, op->req.len,
         rt->todo);
   TRY_GT(spi_mod_regs, cc1101, CC1101_IOCFG2, CC1101_MDMCFG2, tx_reg_setup,
          NULL);

@@ -11,7 +11,7 @@ sources: [src]
 libs:
   - origin: https://github.com/mongoose-os-libs/pq
   - origin: https://github.com/mongoose-os-libs/spi
-  - origin: https://github.com/QRPp/mgos-helpers
+  - {origin: https://github.com/QRPp/mgos-helpers, name: helpers}
 
 config_schema:
   - ["cc1101", "o", {"title":"CC1101 Tx RF module: singleton settings"}]

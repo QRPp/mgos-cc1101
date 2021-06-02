@@ -247,6 +247,7 @@ static void tx_rt_start(void *opaque) {
 
   bool ok = false;
   op->err = CC1101_TX_SYS_ERR;
+  if (op->req.quiet_us) mgos_usleep(op->req.quiet_us);
   spi_start(cc1101);
   struct CC1101_MARCSTATE ms = {val : spi_get_reg_gt(cc1101, CC1101_MARCSTATE)};
   if (ms.MARC_STATE != CC1101_MARC_STATE_IDLE) {

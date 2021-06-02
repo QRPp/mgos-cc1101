@@ -115,6 +115,7 @@ struct mgos_cc1101_tx_req {
   uint8_t *data;
   size_t len, copies;
   bool free_data;
+  uint32_t quiet_us;
   mgos_cb_t cb;
   void *opaque;
 };

@@ -102,9 +102,9 @@ bool mgos_cc1101_read_reg(const struct mgos_cc1101 *cc1101, cc1101_reg_t reg,
 }
 
 bool mgos_cc1101_read_regs(const struct mgos_cc1101 *cc1101, uint8_t cnt,
-                           uint8_t *vals) {
+                           uint8_t *trx) {
   spi_start(cc1101);
-  bool ok = spi_read_regs(cc1101, cnt, vals);
+  bool ok = spi_read_regs(cc1101, cnt, trx);
   spi_stop(cc1101);
   return ok;
 }
@@ -158,6 +158,14 @@ bool mgos_cc1101_write_reg(const struct mgos_cc1101 *cc1101, cc1101_reg_t reg,
                            uint8_t val) {
   spi_start(cc1101);
   bool ok = spi_write_reg(cc1101, reg, val);
+  spi_stop(cc1101);
+  return ok;
+}
+
+bool mgos_cc1101_write_regs(const struct mgos_cc1101 *cc1101, uint8_t cnt,
+                            uint8_t *tx) {
+  spi_start(cc1101);
+  bool ok = spi_write_regs(cc1101, cnt, tx);
   spi_stop(cc1101);
   return ok;
 }

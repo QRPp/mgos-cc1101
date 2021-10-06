@@ -162,7 +162,7 @@ void mgos_cc1101_put_global_locked();
 bool mgos_cc1101_read_reg(const struct mgos_cc1101 *cc1101, cc1101_reg_t reg,
                           uint8_t *val);
 bool mgos_cc1101_read_regs(const struct mgos_cc1101 *cc1101, uint8_t cnt,
-                           uint8_t *vals);
+                           uint8_t *trx);
 bool mgos_cc1101_reset(const struct mgos_cc1101 *cc1101);
 bool mgos_cc1101_set_data_rate(const struct mgos_cc1101 *cc1101,
                                struct mgos_cc1101_regs *regs, float kbaud);
@@ -175,6 +175,8 @@ bool mgos_cc1101_set_modulation(const struct mgos_cc1101 *cc1101,
                                 uint8_t sync_mode, bool manchester, bool fec);
 bool mgos_cc1101_write_reg(const struct mgos_cc1101 *cc1101, cc1101_reg_t reg,
                            uint8_t val);
+bool mgos_cc1101_write_regs(const struct mgos_cc1101 *cc1101, uint8_t cnt,
+                            uint8_t *tx);
 bool mgos_cc1101_tx(struct mgos_cc1101 *cc1101, struct mgos_cc1101_tx_req *req);
 
 #ifdef __cplusplus
